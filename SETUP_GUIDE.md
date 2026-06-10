@@ -537,6 +537,560 @@ curl -X POST http://localhost:8000/api/webhook \
 ```
 
 ---
+
+## Complete Postman Guide for Webhook Testing
+
+This guide walks you through sending all webhook types one by one using Postman.
+
+### Prerequisites
+
+1. Download and install Postman: https://www.postman.com/downloads/
+2. Backend API running on `http://localhost:8000`
+3. Database initialized with demo data (`python database/init_demo.py`)
+
+---
+
+### Step 1: Create a New Collection
+
+1. Open Postman
+2. Click **"+ Create"** → **Collection**
+3. Name it **"Aspira TAT Webhooks"**
+4. Click **Create**
+
+---
+
+### Step 2: Create Environment Variables (Optional but Recommended)
+
+1. Click **Environments** in the left sidebar
+2. Click **"+ Create New"**
+3. Name it **"Local Development"**
+4. Add these variables:
+
+| Variable | Initial Value | Current Value |
+|----------|---|---|
+| base_url | http://localhost:8000 | http://localhost:8000 |
+| bill_id | 12345 | 12345 |
+| lab_id | 1 | 1 |
+| patient_id | 101 | 101 |
+| sample_accession | ACC-2024-001 | ACC-2024-001 |
+| lab_report_id | 1001 | 1001 |
+
+5. Click **Save**
+6. Select this environment from the top-right dropdown
+
+---
+
+### Step 3: Create Webhook Requests
+
+#### 1️⃣ **BILL_GENERATE** (Start Here)
+
+This webhook initiates a new bill and starts the TAT pipeline.
+
+1. Click **"+"** to create a new request in your collection
+2. Name it **"1. BILL_GENERATE"**
+3. Set **Method** to **POST**
+4. Set **URL** to:
+   ```
+   {{base_url}}/api/webhook
+   ```
+
+5. Go to **Headers** tab and add:
+   ```
+   Content-Type: application/json
+   ```
+
+6. Go to **Body** tab, select **raw** and **JSON**, then paste:
+
+```json
+{
+  "webhook_type": "BILL_GENERATE",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1001,
+    "billId": {{bill_id}},
+    "labId": {{lab_id}},
+    "billTime": "2024-06-10T10:00:00Z",
+    "totalAmount": 5000,
+    "dueAmount": 5000,
+    "billAdvance": 0,
+    "patientId": {{patient_id}},
+    "patientName": "John Doe",
+    "patientGender": "M",
+    "patientAge": "35",
+    "collectedSampleId": {
+      "id": 2001,
+      "accessionNo": "{{sample_accession}}",
+      "collectionTime": "2024-06-10T09:30:00Z",
+      "type": "BLOOD",
+      "name": "Blood Sample"
+    },
+    "labReportDetails": [
+      {
+        "labReportId": {{lab_report_id}},
+        "testID": 101,
+        "testCode": "CBC",
+        "testName": "Complete Blood Count",
+        "testCategory": "Hematology",
+        "testAmount": 500
+      }
+    ],
+    "sampleDate": "2024-06-10T09:30:00Z",
+    "reportDate": "2024-06-10T10:00:00Z"
+  }
+}
+```
+
+7. Click **Send**
+8. Check response (should be 202 Accepted)
+
+---
+
+#### 2️⃣ **BILL_UPDATE**
+
+Updates bill information.
+
+1. Create a new request: **"2. BILL_UPDATE"**
+2. Set **Method** to **POST**
+3. Set **URL** to: `{{base_url}}/api/webhook`
+4. **Body** (raw JSON):
+
+```json
+{
+  "webhook_type": "BILL_UPDATE",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1002,
+    "billId": {{bill_id}},
+    "labId": {{lab_id}},
+    "billTime": "2024-06-10T10:15:00Z",
+    "totalAmount": 5500,
+    "dueAmount": 5500,
+    "billAdvance": 0,
+    "patientId": {{patient_id}},
+    "patientName": "John Doe"
+  }
+}
+```
+
+5. Click **Send**
+
+---
+
+#### 3️⃣ **SAMPLE_COLLECTED**
+
+Marks sample as collected at the collection center.
+
+1. Create request: **"3. SAMPLE_COLLECTED"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "SAMPLE_COLLECTED",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1003,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "sampleId": {
+      "id": 2001,
+      "accessionNo": "{{sample_accession}}",
+      "collectionTime": "2024-06-10T09:30:00Z",
+      "type": "BLOOD",
+      "name": "Blood Sample"
+    },
+    "timestamp": "2024-06-10T09:30:00Z"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 4️⃣ **SAMPLE_RECEIVED**
+
+Marks sample as received at the processing lab (triggers scheduling).
+
+1. Create request: **"4. SAMPLE_RECEIVED"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "SAMPLE_RECEIVED",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1004,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "sampleId": {
+      "id": 2001,
+      "accessionNo": "{{sample_accession}}"
+    },
+    "receivedTime": "2024-06-10T10:30:00Z",
+    "receivedBy": "Lab Tech"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 5️⃣ **REPORT_SAVE**
+
+Saves result values (not final submission).
+
+1. Create request: **"5. REPORT_SAVE"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "REPORT_SAVE",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1005,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "labReportDetails": [
+      {
+        "labReportId": {{lab_report_id}},
+        "testID": 101,
+        "testCode": "CBC",
+        "testName": "Complete Blood Count",
+        "testAmount": 500,
+        "reportDate": "2024-06-10T11:00:00Z"
+      }
+    ],
+    "timestamp": "2024-06-10T11:00:00Z",
+    "savedBy": "Lab Analyst"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 6️⃣ **REPORT_SUBMIT**
+
+Submits report for final review (main TAT completion trigger).
+
+1. Create request: **"6. REPORT_SUBMIT"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "REPORT_SUBMIT",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1006,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "labReportDetails": [
+      {
+        "labReportId": {{lab_report_id}},
+        "testID": 101,
+        "testCode": "CBC",
+        "testName": "Complete Blood Count",
+        "reportDate": "2024-06-10T11:15:00Z"
+      }
+    ],
+    "submittedTime": "2024-06-10T11:15:00Z",
+    "submittedBy": "Lab Manager"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 7️⃣ **REPORT_SIGNED**
+
+Report signed by authorized personnel (final state).
+
+1. Create request: **"7. REPORT_SIGNED"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "REPORT_SIGNED",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1007,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "labReportDetails": [
+      {
+        "labReportId": {{lab_report_id}},
+        "testID": 101,
+        "testCode": "CBC"
+      }
+    ],
+    "signedTime": "2024-06-10T11:30:00Z",
+    "signedBy": "Dr. Smith"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 8️⃣ **SAMPLE_REJECTED**
+
+Sample rejected at lab (requires redraw).
+
+1. Create request: **"8. SAMPLE_REJECTED"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "SAMPLE_REJECTED",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1008,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "sampleId": {
+      "id": 2001,
+      "accessionNo": "{{sample_accession}}"
+    },
+    "rejectionReason": "Hemolyzed sample",
+    "rejectionTime": "2024-06-10T10:45:00Z",
+    "rejectedBy": "Lab Tech"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 9️⃣ **SAMPLE_REDRAWN**
+
+Sample redrawn (creates new cycle).
+
+1. Create request: **"9. SAMPLE_REDRAWN"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "SAMPLE_REDRAWN",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1009,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "sampleId": {
+      "id": 2001,
+      "accessionNo": "{{sample_accession}}"
+    },
+    "newSampleId": {
+      "id": 2002,
+      "accessionNo": "ACC-2024-001-RD1",
+      "collectionTime": "2024-06-10T11:00:00Z"
+    },
+    "redrawReason": "Hemolyzed sample",
+    "redrawTime": "2024-06-10T11:00:00Z"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 🔟 **SAMPLE_DISMISSED**
+
+Sample/bill completely dismissed.
+
+1. Create request: **"10. SAMPLE_DISMISSED"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "SAMPLE_DISMISSED",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1010,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "sampleId": {
+      "id": 2001,
+      "accessionNo": "{{sample_accession}}"
+    },
+    "dismissalReason": "Patient cancelled",
+    "dismissalTime": "2024-06-10T12:00:00Z"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+#### 1️⃣1️⃣ **TEST_DISMISSED**
+
+Individual test dismissed/cancelled.
+
+1. Create request: **"11. TEST_DISMISSED"**
+2. **URL**: `{{base_url}}/api/webhook`
+3. **Body**:
+
+```json
+{
+  "webhook_type": "TEST_DISMISSED",
+  "bill_id": {{bill_id}},
+  "lab_id": {{lab_id}},
+  "payload": {
+    "webhookId": 1011,
+    "bill_id": {{bill_id}},
+    "lab_id": {{lab_id}},
+    "testID": 101,
+    "testCode": "CBC",
+    "testName": "Complete Blood Count",
+    "dismissalReason": "Patient refused",
+    "dismissalTime": "2024-06-10T12:15:00Z"
+  }
+}
+```
+
+4. Click **Send**
+
+---
+
+### Running Webhooks in Sequence
+
+#### Option 1: Manual Execution
+
+1. Click each request in order (1-7 for happy path)
+2. Wait for response (should be **202 Accepted**)
+3. Proceed to next request
+
+#### Option 2: Run Collection Automatically
+
+1. Click the **▶ Play** button next to your collection name
+2. Select **"Local Development"** environment
+3. Set delay to **2 seconds** between requests
+4. Click **Run Aspira TAT Webhooks**
+
+Postman will execute all requests with 2-second delays between them.
+
+---
+
+### Response Interpretation
+
+**Success Response (202 Accepted):**
+```json
+{
+  "status": "accepted",
+  "event_id": 1,
+  "message": "Webhook received and queued for processing"
+}
+```
+
+**Error Responses:**
+
+| Status | Meaning |
+|--------|---------|
+| 202 | ✅ Webhook accepted, queued for processing |
+| 400 | ❌ Invalid payload (check JSON syntax) |
+| 422 | ❌ Validation failed (missing required fields) |
+| 500 | ❌ Server error (check backend logs) |
+
+---
+
+### Common Payload Fields Reference
+
+| Field | Type | Required | Example |
+|-------|------|----------|---------|
+| webhook_type | string | Yes | "BILL_GENERATE" |
+| bill_id | integer | Yes | 12345 |
+| lab_id | integer | Yes | 1 |
+| payload | object | Yes | { ... } |
+| webhookId | integer | No | 1001 |
+| timestamp | string | No | "2024-06-10T10:00:00Z" |
+
+---
+
+### Recommended Testing Sequence
+
+**Happy Path (Normal Case):**
+1. BILL_GENERATE
+2. SAMPLE_COLLECTED
+3. SAMPLE_RECEIVED
+4. REPORT_SAVE
+5. REPORT_SUBMIT
+6. REPORT_SIGNED
+
+**Error Scenario (Sample Rejection):**
+1. BILL_GENERATE
+2. SAMPLE_COLLECTED
+3. SAMPLE_RECEIVED
+4. SAMPLE_REJECTED
+5. SAMPLE_REDRAWN
+6. (Repeat from SAMPLE_COLLECTED with new accession number)
+
+**Cancellation Scenario:**
+1. BILL_GENERATE
+2. SAMPLE_COLLECTED
+3. SAMPLE_DISMISSED
+
+---
+
+### Debugging Tips
+
+1. **Check Backend Logs:**
+   ```bash
+   # Terminal running uvicorn
+   # Look for webhook processing messages
+   ```
+
+2. **Check Celery Worker:**
+   ```bash
+   # Terminal running celery worker
+   # Verify webhook.process task is received
+   ```
+
+3. **View Database Events:**
+   ```sql
+   -- Connect to PostgreSQL
+   SELECT * FROM tat_webhook_event ORDER BY created_at DESC LIMIT 10;
+   ```
+
+4. **Enable Postman Console:**
+   - Press **Ctrl+Alt+C** (or Cmd+Option+C on Mac)
+   - View request/response details
+   - Check headers and body
+
+---
+
+### Next Steps
+
+- Once webhooks are successfully processed, check the dashboard at `http://localhost:3000`
+- Verify bill status, sample journey, and TAT metrics are updated
+- Monitor alerts if SLA thresholds are breached
+
+---
 ### Performance Tuning
 
 1. **PostgreSQL**

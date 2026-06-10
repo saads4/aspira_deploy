@@ -85,6 +85,7 @@ def _enqueue_reconciliation_if_needed(
         prerequisite_detail=prerequisite_detail,
         external_bill_id=external_bill_id,
     )
+#bill generation webhook
 def _bill_generate_samples(payload: Dict[str, Any]) -> list[Dict[str, Any]]:
     """Normalize supported BILL_GENERATE shapes to samples[{sample fields, reports[]}]."""
     samples = payload.get("samples")
@@ -162,15 +163,10 @@ def _get_routing_context(dept_ids: list[int], test_codes: list[str], cur) -> Dic
     if row:
         ctx["fallback_lab_id"] = row["id"]
     return ctx
+#tat calculation
 def _calculate_three_tier_tat(cur, ti_id: int, sample_id: int, bill_id: int,
                                report_date: Optional[datetime]) -> Dict[str, Optional[int]]:
-    """
-    Calculate three-tier TAT metrics per PRD Section 10:
-    - Overall TAT (Customer TAT): report_date - bill_time
-    - Lab TAT (Operational TAT): report_date - processing_accession_time
-    - Transport TAT: processing_accession_time - bill_time
-    Returns dict with keys: overall_tat_mins, lab_tat_mins, transport_tat_mins
-    """
+
     if not report_date:
         return {"overall_tat_mins": None, "lab_tat_mins": None, "transport_tat_mins": None}
     # Fetch bill time and sample arrival time
@@ -370,7 +366,10 @@ def _handle_bill_generate(cur, event: dict, payload: dict) -> None:
             if d_id:
                 dept_ids.append(int(d_id))
         # Determine assigned lab immediately
-        assigned_lab_id, routing_reason = route_sample_to_lab(dept_ids, cur)
+        try:
+            assigned_lab_id, routing_reason = route_sample_to_lab(dept_ids, cur)
+        except ValueError:
+            assigned_lab_id, routing_reason = None, "no_fallback_lab"
         # Priority mapping: Use org default if available, otherwise payload
         if org_priority is not None:
             priority = org_priority
@@ -716,7 +715,7 @@ def _handle_sample_uncollected(cur, event: Dict, payload: Dict) -> None:
     """, (row["id"],))
     _log(cur, {
         "sample_id": row["id"], "bill_id": row["bill_id"],
-        "event_type": "sample_collected", "ts": _now(),
+        "event_type": "sample_uncollected", "ts": _now(),
         "webhook_event_id": event_id, "notes": "Sample collection reset by LIS",
     })
     push_sample_to_cache(cur, row["id"])
@@ -1393,7 +1392,7 @@ def _handle_report_pdf(cur, event: Dict, payload: Dict) -> None:
             else:
                 # L-5 FIX: Remove the _process_test_completion call from the PDF handler.
                 # Completion must come exclusively from REPORT_SIGNED / REPORT_SUBMIT.
-                logger.info("[REPORT_PDF] PDF received for test_id=%d, status=%s", ti_id, ti_row["status"])
+                logger.info("[REPORT_PDF] PDF received for test_id=%d, status=%s", ti_id, ti_row["status"] if ti_row else "unknown")
 # ─────────────────────────────────────────────────────────────────────────────
 # TEST_DISMISSED handler
 # ─────────────────────────────────────────────────────────────────────────────

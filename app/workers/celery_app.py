@@ -79,8 +79,8 @@ def sync_lab_downtime():
     do_lab_downtime_sync()
 
 
-@celery_app.task(name="alert.process", queue=cfg.QUEUE_ALERT, max_retries=3, default_retry_delay=5)
-def process_alert_task(alert_job: dict):
+@celery_app.task(name="alert.process", bind=True, queue=cfg.QUEUE_ALERT, max_retries=3, default_retry_delay=5)
+def process_alert_task(self, alert_job: dict):
     """Process queued alert — send email/webhook without blocking webhook handlers."""
     import logging
     import smtplib
@@ -108,7 +108,7 @@ def process_alert_task(alert_job: dict):
     except Exception as exc:
         logger.error("Alert send failed: %s", exc)
         # Retry up to max_retries
-        raise
+        raise self.retry(exc=exc)
 
 
 def _send_breach_alert(metadata: dict) -> None:

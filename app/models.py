@@ -17,11 +17,11 @@ class Priority(str, Enum):
     URGENT  = "URGENT"
 
 class AlertType(str, Enum):
-    MISSED_BATCH      = "MISSED_BATCH"
-    SLA_BREACH        = "SLA_BREACH"
-    TAT_BREACH        = "TAT_BREACH"
-    DELAY_ESCALATION  = "DELAY_ESCALATION"
-    RESULT_COMPLETED  = "RESULT_COMPLETED"
+    MISSED_BATCH      = "missed_batch"
+    SLA_BREACH        = "sla_breach"
+    TAT_BREACH        = "tat_breach"
+    DELAY_ESCALATION  = "delay_escalation"
+    RESULT_COMPLETED  = "result_completed"
 
     # Alert types from Documentation section 8.1
     SLA_AT_RISK       = "sla_at_risk"

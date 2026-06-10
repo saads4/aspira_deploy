@@ -39,7 +39,7 @@ def _redis() -> redis.Redis:
             health_check_interval=30,
             socket_timeout=10,
             retry_on_timeout=True,
-            ssl_cert_reqs="none" if cfg.REDIS_URL.startswith("rediss://") else "required"
+            ssl_cert_reqs=None
         )
     return _r
 

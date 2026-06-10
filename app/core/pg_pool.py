@@ -89,9 +89,11 @@ def pooled_connection() -> Iterator[psycopg2.extensions.connection]:
         # Always rollback uncommitted / aborted work before returning.
         # This is a no-op when the caller already committed explicitly.
         try:
-            if not conn.closed:
+            if conn.closed:
+                pool.putconn(conn, close=True)
+            else:
                 conn.rollback()
-            pool.putconn(conn)
+                pool.putconn(conn)
         except Exception as exc:
             # Broken connection (Neon cold-start, network drop, etc.) —
             # discard it entirely so the pool issues a fresh one next time.

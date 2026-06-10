@@ -13,8 +13,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-import psycopg2
-import psycopg2.extras
 import pytz
 
 from config.settings import cfg
@@ -22,9 +20,6 @@ from config.settings import cfg
 logger = logging.getLogger("alert_service")
 _IST   = pytz.timezone(cfg.ZONE)
 
-
-def _pg():
-    return psycopg2.connect(cfg.PG_DSN, cursor_factory=psycopg2.extras.RealDictCursor)
 
 
 def _now() -> datetime:
@@ -235,7 +230,7 @@ def alert_processing_error(
         sample_id=sample_id,
         test_instance_id=None,
         lab_id=None,
-        alert_type="sla_at_risk",
+        alert_type="processing_error",
         severity="medium",
         message=reason
     )
@@ -269,7 +264,7 @@ def alert_missing_test_config(
         sample_id=sample_id,
         test_instance_id=None,
         lab_id=None,
-        alert_type="sla_at_risk",
+        alert_type="missing_config",
         severity="medium",
         message=f"No config for test codes: {test_codes}. Using lab default."
     )
