@@ -13,12 +13,17 @@ const nextConfig = {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   async rewrites() {
-    // In Docker the backend is at http://backend:8000 (service name).
-    // Outside Docker (local dev) it falls back to http://localhost:8000.
+    // API routing strategy:
+    // 1. INTERNAL_API_URL: Docker/server-side rewrites (e.g., http://backend:8000)
+    // 2. NEXT_PUBLIC_BACKEND_URL: Set in Vercel/Railway env vars (e.g., https://backend-prod.railway.app)
+    // 3. NEXT_PUBLIC_API_URL: Legacy fallback
+    // 4. http://localhost:8000: Local development default
+    
     const apiBase =
-      process.env.INTERNAL_API_URL ||   // set this in docker-compose for server-side rewrites
-      process.env.NEXT_PUBLIC_API_URL ||
-      'http://localhost:8000';
+      process.env.INTERNAL_API_URL ||          // Docker compose server rewrites
+      process.env.NEXT_PUBLIC_BACKEND_URL ||   // Railway backend (Vercel env)
+      process.env.NEXT_PUBLIC_API_URL ||       // Legacy env var
+      'http://localhost:8000';                 // Local dev default
 
     return [
       {
