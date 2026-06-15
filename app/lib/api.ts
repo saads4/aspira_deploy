@@ -16,13 +16,19 @@ const BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   'http://localhost:8000';
 
+function buildUrl(path: string): string {
+  const base = BASE.endsWith('/') ? BASE.slice(0, -1) : BASE;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalizedPath}`;
+}
+
 // ─── Generic helper ───────────────────────────────────────────────────────────
 
 async function api<T = any>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(buildUrl(path), {
     credentials: 'include',                        // ← send auth cookies cross-origin
     headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
     ...options,
